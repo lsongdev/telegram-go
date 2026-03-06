@@ -28,7 +28,7 @@ type TelegramBotResponse struct {
 
 // https://core.telegram.org/bots/api#user
 type User struct {
-	ID                      int    `json:"id"`
+	ID                      int64  `json:"id"`
 	IsBot                   bool   `json:"is_bot"`
 	FirstName               string `json:"first_name"`
 	LastName                string `json:"last_name"`
@@ -42,8 +42,7 @@ type User struct {
 }
 
 type ReplyParameters struct {
-	MessageId             int              `json:"message_id"`
-	ChatId                int              `json:"chat_id"`
+	MessageId             int64            `json:"message_id"`
 	AllowSendingWithReply bool             `json:"allow_sending_with_reply,omitempty"`
 	Quote                 string           `json:"quote,omitempty"`
 	QuoteParseMode        string           `json:"quote_parse_mode,omitempty"`
@@ -82,7 +81,7 @@ type ReactionType struct{}
 
 // https://core.telegram.org/bots/api#chat
 type Chat struct {
-	Id                     int             `json:"id"`
+	Id                     int64           `json:"id"`
 	Type                   string          `json:"type"`
 	Title                  string          `json:"title"`
 	UserName               string          `json:"username"`
@@ -101,8 +100,8 @@ type Chat struct {
 
 // https://core.telegram.org/bots/api#message
 type Message struct {
-	MessageId           int                 `json:"message_id"`
-	MessageThreadId     int                 `json:"message_thread_id"`
+	MessageId           int64               `json:"message_id"`
+	MessageThreadId     int64               `json:"message_thread_id"`
 	From                *User               `json:"from"`
 	SenderChat          *Chat               `json:"sender_chat"`
 	Date                int                 `json:"date"`
@@ -211,9 +210,9 @@ func (bot *TelegramBot) GetMe() (user *User, err error) {
 }
 
 type MessageRequest struct {
-	ChatId              string              `json:"chat_id"`
+	ChatId              int64               `json:"chat_id"`
 	Text                string              `json:"text"`
-	MessageThreadId     string              `json:"message_thread_id,omitempty"`
+	MessageThreadId     int64               `json:"message_thread_id,omitempty"`
 	ParseMode           string              `json:"parse_mode,omitempty"`
 	Entities            []*MessageEntity    `json:"entities,omitempty"`
 	LinkPreviewOptions  *LinkPreviewOptions `json:"link_preview_options,omitempty"`
@@ -380,4 +379,58 @@ func (bot *TelegramBot) SendDice(req *SendDiceRequest) (message *Message, err er
 	}
 	err = json.Unmarshal(data, &message)
 	return
+}
+
+type EditMessageTextRequest struct {
+	ChatId             int64               `json:"chat_id,omitempty"`
+	MessageId          int64               `json:"message_id,omitempty"`
+	InlineMessageId    string              `json:"inline_message_id,omitempty"`
+	Text               string              `json:"text"`
+	ParseMode          string              `json:"parse_mode,omitempty"`
+	Entities           []*MessageEntity    `json:"entities,omitempty"`
+	LinkPreviewOptions *LinkPreviewOptions `json:"link_preview_options,omitempty"`
+	ReplyMarkup        string              `json:"reply_markup,omitempty"`
+}
+
+// https://core.telegram.org/bots/api#editmessagetext
+func (bot *TelegramBot) EditMessageText(req *EditMessageTextRequest) (message *Message, err error) {
+	data, err := bot.Call("/editMessageText", req)
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal(data, &message)
+	return
+}
+
+type MessageDraftRequest struct {
+	ChatId          int64            `json:"chat_id"`
+	MessageThreadId int64            `json:"message_thread_id,omitempty"`
+	DraftId         int64            `json:"draft_id"`
+	Text            string           `json:"text"`
+	ParseMode       string           `json:"parse_mode,omitempty"`
+	Entities        []*MessageEntity `json:"entities,omitempty"`
+}
+
+// Use this method to stream a partial message to a user while the message is being generated. Returns True on success.
+// https://core.telegram.org/bots/api#sendmessagedraft
+func (bot *TelegramBot) SendMessageDraft(req *MessageDraftRequest) error {
+	data, err := bot.Call("/sendMessageDraft", req)
+	if err != nil {
+		return err
+	}
+	if string(data) == "true" {
+		return nil
+	}
+	return fmt.Errorf("error: %s", string(data))
+}
+
+// SendChatAction sends a chat action to show status (typing, upload_photo, etc.)
+// https://core.telegram.org/bots/api#sendchataction
+func (bot *TelegramBot) SendChatAction(chatId int64, action string) error {
+	params := map[string]interface{}{
+		"chat_id": chatId,
+		"action":  action,
+	}
+	_, err := bot.Call("/sendChatAction", params)
+	return err
 }

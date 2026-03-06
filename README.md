@@ -5,7 +5,7 @@
 ## Usage
 
 ```shell
-go get -u github.com/song940/telegram-go
+go get -u github.com/lsongdev/telegram-go
 ```
 
 ## Examples
@@ -18,7 +18,7 @@ import (
   "fmt"
   "log"
 
-  "github.com/song940/telegram-go/telegram"
+  "github.com/lsongdev/telegram-go/telegram"
 )
 
 func main() {
