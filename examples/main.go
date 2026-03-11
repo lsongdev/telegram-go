@@ -19,19 +19,28 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	log.Printf("%s(@%s)", me.FirstName, me.UserName)
 
-	log.Println(me)
-	ctx, _ := context.WithCancel(context.Background())
+	ctx := context.Background()
 	bot.StartPolling(ctx, func(update *telegram.Update, err error) {
 		if err != nil {
-			log.Println(err)
-			return
+			log.Fatal(err)
 		}
-		log.Println(update.Message.Chat.Id, update.Message.From.UserName, update.Message.Text)
-		bot.SendMessageDraft(&telegram.MessageDraftRequest{
-			ChatId:  update.Message.Chat.Id,
-			DraftId: 1,
-			Text:    update.Message.Text,
-		})
+		if update.Message != nil {
+			log.Printf("%s> %s", update.Message.From.FirstName, update.Message.Text)
+
+			err = bot.SetMessageReaction(telegram.MessageReaction{
+				ChatID:    update.Message.Chat.ID,
+				MessageID: update.Message.MessageID,
+				Reaction:  telegram.NewReaction("❤️"),
+			})
+			if err != nil {
+				log.Panicln(err)
+			}
+		}
+		if update.MessageReaction != nil {
+			log.Println(update.MessageReaction.OldReaction, "->", update.MessageReaction.NewReaction)
+		}
+
 	})
 }

@@ -37,9 +37,9 @@ func main() {
       log.Println(err)
       return
     }
-    log.Println(update.Message.Chat.Id, update.Message.From.UserName, update.Message.Text)
+    log.Println(update.Message.Chat.ID, update.Message.From.UserName, update.Message.Text)
     bot.SendMessage(&telegram.MessageRequest{
-      ChatId: fmt.Sprintf("%d", update.Message.Chat.Id),
+      ChatId: fmt.Sprintf("%d", update.Message.Chat.ID),
       Text:   update.Message.Text,
     })
   })

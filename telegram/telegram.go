@@ -42,7 +42,7 @@ type User struct {
 }
 
 type ReplyParameters struct {
-	MessageId             int64            `json:"message_id"`
+	MessageID             int64            `json:"message_id"`
 	AllowSendingWithReply bool             `json:"allow_sending_with_reply,omitempty"`
 	Quote                 string           `json:"quote,omitempty"`
 	QuoteParseMode        string           `json:"quote_parse_mode,omitempty"`
@@ -81,7 +81,10 @@ type ReactionType struct{}
 
 // https://core.telegram.org/bots/api#chat
 type Chat struct {
-	Id                     int64           `json:"id"`
+	// Unique identifier for this chat.
+	// This number may have more than 32 significant bits and some programming languages may have difficulty/silent defects in interpreting it.
+	// But it has at most 52 significant bits, so a signed 64-bit integer or double-precision float type are safe for storing this identifier.
+	ID                     int64           `json:"id"`
 	Type                   string          `json:"type"`
 	Title                  string          `json:"title"`
 	UserName               string          `json:"username"`
@@ -100,7 +103,7 @@ type Chat struct {
 
 // https://core.telegram.org/bots/api#message
 type Message struct {
-	MessageId           int64               `json:"message_id"`
+	MessageID           int64               `json:"message_id"`
 	MessageThreadId     int64               `json:"message_thread_id"`
 	From                *User               `json:"from"`
 	SenderChat          *Chat               `json:"sender_chat"`
@@ -152,14 +155,6 @@ type MessageEntity struct {
 	Length int    `json:"length"`
 	URL    string `json:"url,omitempty"`
 	User   *User  `json:"user,omitempty"`
-}
-
-type Update struct {
-	UpdateId          int      `json:"update_id"`
-	Message           *Message `json:"message,omitempty"`
-	EditedMessage     *Message `json:"edited_message,omitempty"`
-	ChannelPost       *Message `json:"channel_post,omitempty"`
-	EditedChannelPost *Message `json:"edited_channel_post,omitempty"`
 }
 
 func NewBot(config *Config) (bot *TelegramBot) {
@@ -251,6 +246,64 @@ type UpdateRequest struct {
 	AllowedUpdates []string `json:"allowed_updates"`
 }
 
+type Update struct {
+	UpdateId          int      `json:"update_id"`
+	Message           *Message `json:"message,omitempty"`
+	EditedMessage     *Message `json:"edited_message,omitempty"`
+	ChannelPost       *Message `json:"channel_post,omitempty"`
+	EditedChannelPost *Message `json:"edited_channel_post,omitempty"`
+	// business_connection
+	// business_message
+	// edited_business_message
+	// deleted_business_messages
+	MessageReaction      *MessageReactionUpdated      `json:"message_reaction,omitempty"`
+	MessageReactionCount *MessageReactionCountUpdated `json:"message_reaction_count,omitempty"`
+	// inline_query
+	// chosen_inline_result
+	// callback_query
+	// shipping_query
+	// pre_checkout_query
+	// purchased_paid_media
+	// poll
+	// poll_answer
+	// my_chat_member
+	// chat_member
+	// chat_join_request
+	// chat_boost
+	// removed_chat_boost
+}
+
+// https://core.telegram.org/bots/api#messagereactionupdated
+type MessageReactionUpdated struct {
+	MessageID   int64      `json:"message_id"`
+	Chat        Chat       `json:"chat"`
+	User        User       `json:"user,omitempty"`
+	ActorChat   Chat       `json:"actor_chat,omitempty"`
+	Date        int64      `json:"date"`
+	OldReaction []Reaction `json:"old_reaction"`
+	NewReaction []Reaction `json:"new_reaction"`
+}
+
+// https://core.telegram.org/bots/api#messagereactionupdated
+type Reaction struct {
+	Type          string `json:"type"` // "emoji" | "custom_emoji" | "paid"
+	Emoji         string `json:"emoji"`
+	CustomEmojiID string `json:"custom_emoji_id"`
+}
+
+// https://core.telegram.org/bots/api#messagereactionupdated
+type MessageReactionCountUpdated struct {
+	MessageID int64           `json:"message_id"`
+	Chat      Chat            `json:"chat"`
+	Date      int64           `json:"date"`
+	Reactions []ReactionCount `json:"reactions"`
+}
+
+type ReactionCount struct {
+	Type       string `json:"type"`
+	TotalCount int    `json:"total_count"`
+}
+
 // GetUpdates
 // https://core.telegram.org/bots/api#getting-updates
 func (bot *TelegramBot) GetUpdates(request *UpdateRequest) (updates []*Update, err error) {
@@ -294,7 +347,7 @@ type ForwardMessageRequest struct {
 	FromChatId          int  `json:"from_chat_id"`
 	DisableNotification bool `json:"disable_notification"`
 	ProtectContent      bool `json:"protect_content"`
-	MessageId           int  `json:"message_id"`
+	MessageID           int  `json:"message_id"`
 }
 
 // https://core.telegram.org/bots/api#forwardmessage
@@ -383,7 +436,7 @@ func (bot *TelegramBot) SendDice(req *SendDiceRequest) (message *Message, err er
 
 type EditMessageTextRequest struct {
 	ChatId             int64               `json:"chat_id,omitempty"`
-	MessageId          int64               `json:"message_id,omitempty"`
+	MessageID          int64               `json:"message_id,omitempty"`
 	InlineMessageId    string              `json:"inline_message_id,omitempty"`
 	Text               string              `json:"text"`
 	ParseMode          string              `json:"parse_mode,omitempty"`
@@ -433,4 +486,33 @@ func (bot *TelegramBot) SendChatAction(chatId int64, action string) error {
 	}
 	_, err := bot.Call("/sendChatAction", params)
 	return err
+}
+
+type MessageReaction struct {
+	// Unique identifier for the target chat or username of the target channel (in the format @channelusername)
+	ChatID    any        `json:"chat_id"`
+	MessageID int64      `json:"message_id"`
+	Reaction  []Reaction `json:"reaction,omitempty"`
+	IsBig     bool       `json:"is_big,omitempty"`
+}
+
+// Use this method to change the chosen reactions on a message.
+// Service messages of some types can't be reacted to.
+// Automatically forwarded messages from a channel to its discussion group have the same available reactions as messages in the channel.
+// Bots can't use paid reactions. Returns True on success.
+// @docs https://core.telegram.org/bots/api#setmessagereaction
+func (bot *TelegramBot) SetMessageReaction(reaction MessageReaction) error {
+	_, err := bot.Call("/setMessageReaction", reaction)
+	return err
+}
+
+func NewReaction(emojis ...string) (reactions []Reaction) {
+	for _, emoji := range emojis {
+		reaction := Reaction{
+			Type:  "emoji",
+			Emoji: emoji,
+		}
+		reactions = append(reactions, reaction)
+	}
+	return
 }
