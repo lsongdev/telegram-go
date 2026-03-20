@@ -20,8 +20,9 @@ type Config struct {
 }
 
 type TelegramBot struct {
-	config *Config
-	client *http.Client
+	config          *Config
+	client          *http.Client
+	IncomingMessage chan *Update
 }
 
 type TelegramBotResponse struct {
@@ -367,6 +368,16 @@ func (bot *TelegramBot) StartPolling(ctx context.Context, updateFunc func(update
 			}
 		}
 	}
+}
+
+func (bot *TelegramBot) Start(ctx context.Context) {
+	bot.StartPolling(ctx, func(update *Update, err error) {
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		bot.IncomingMessage <- update
+	})
 }
 
 type MessageRequest struct {
